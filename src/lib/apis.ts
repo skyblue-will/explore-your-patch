@@ -1,0 +1,200 @@
+const CACHE_24H = { next: { revalidate: 86400 } } as RequestInit
+
+// ─── Postcodes.io ───
+export async function lookupPostcode(postcode: string) {
+  const res = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`, CACHE_24H)
+  if (!res.ok) return null
+  const data = await res.json()
+  if (data.status !== 200) return null
+  const r = data.result
+  return {
+    postcode: r.postcode,
+    lat: r.latitude,
+    lng: r.longitude,
+    admin_district: r.admin_district,
+    parish: r.parish,
+    lsoa: r.lsoa,
+    region: r.region,
+    country: r.country,
+    admin_ward: r.admin_ward,
+  }
+}
+
+// ─── Police UK Crime ───
+export async function getCrime(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://data.police.uk/api/crimes-street/all-crime?lat=${lat}&lng=${lng}`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
+    )
+    if (!res.ok) return null
+    const crimes: Array<{ category: string; month: string }> = await res.json()
+
+    // Summarize by category
+    const byCategory: Record<string, number> = {}
+    crimes.forEach(c => {
+      const cat = c.category.replace(/-/g, ' ')
+      byCategory[cat] = (byCategory[cat] || 0) + 1
+    })
+
+    const sorted = Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, count]) => ({ category, count }))
+
+    return { total: crimes.length, byCategory: sorted, month: crimes[0]?.month || 'unknown' }
+  } catch { return null }
+}
+
+// ─── Flood Monitoring ───
+export async function getFloodStations(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://environment.data.gov.uk/flood-monitoring/id/stations?lat=${lat}&long=${lng}&dist=10`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const stations = (data.items || []).slice(0, 10).map((s: any) => ({
+      label: s.label,
+      river: s.riverName,
+      town: s.town,
+      status: s.status,
+      lat: s.lat,
+      lng: s.long,
+    }))
+    return { count: data.items?.length || 0, stations }
+  } catch { return null }
+}
+
+export async function getFloodWarnings(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://environment.data.gov.uk/flood-monitoring/id/floods?lat=${lat}&long=${lng}&dist=20`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const warnings = (data.items || []).slice(0, 5).map((w: any) => ({
+      description: w.description,
+      severity: w.severityLevel,
+      message: w.message,
+      area: w.eaAreaName,
+    }))
+    return { count: data.items?.length || 0, warnings }
+  } catch { return null }
+}
+
+// ─── Land Registry ───
+export async function getHousePrices(postcode: string) {
+  const sparql = `
+    PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
+    PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
+    SELECT ?amount ?date ?propertyType ?address
+    WHERE {
+      ?tx lrppi:pricePaid ?amount ;
+          lrppi:transactionDate ?date ;
+          lrppi:propertyAddress ?addr .
+      ?addr lrcommon:postcode "${postcode.toUpperCase().replace(/(\S+)\s*(\d)/, '$1 $2')}" .
+      OPTIONAL { ?addr lrcommon:paon ?address }
+      OPTIONAL { ?tx lrppi:propertyType ?propertyType }
+    }
+    ORDER BY DESC(?date)
+    LIMIT 20
+  `
+  try {
+    const res = await fetch('https://landregistry.data.gov.uk/app/root/qonsole/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: `output=json&query=${encodeURIComponent(sparql)}`,
+      ...CACHE_24H,
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const results = (data.results?.bindings || []).map((b: any) => ({
+      amount: parseInt(b.amount?.value || '0'),
+      date: b.date?.value,
+      type: b.propertyType?.value?.split('/').pop() || 'unknown',
+      address: b.address?.value || '',
+    }))
+
+    const amounts = results.map((r: any) => r.amount).filter((a: number) => a > 0)
+    const avg = amounts.length ? Math.round(amounts.reduce((s: number, a: number) => s + a, 0) / amounts.length) : 0
+
+    return { sales: results, averagePrice: avg, count: results.length }
+  } catch { return null }
+}
+
+// ─── Bathing Water Quality ───
+export async function getBathingWater(lat: number, lng: number) {
+  try {
+    // The BWQ API doesn't support lat/lng search directly, so we get all and filter
+    const res = await fetch(
+      'https://environment.data.gov.uk/doc/bathing-water.json?_pageSize=50',
+      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const items = data.result?.items || []
+
+    // Filter to nearest ones (rough distance calc)
+    const withDist = items
+      .filter((i: any) => i.lat && i.long)
+      .map((i: any) => ({
+        name: i.name,
+        lat: i.lat,
+        lng: i.long,
+        classification: i.latestComplianceAssessment?.complianceClassification?.name || 'Unknown',
+        district: i.district?.name || '',
+        distance: haversine(lat, lng, i.lat, i.long),
+      }))
+      .sort((a: any, b: any) => a.distance - b.distance)
+      .slice(0, 5)
+
+    return { sites: withDist }
+  } catch { return null }
+}
+
+// ─── NBN Atlas Species ───
+export async function getSpecies(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://records-ws.nbnatlas.org/occurrences/search?lat=${lat}&lon=${lng}&radius=2&pageSize=0&facets=species_group&facet=true`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+
+    const groups: Array<{ name: string; count: number }> = (data.facetResults?.[0]?.fieldResult || [])
+      .map((f: any) => ({ name: f.label, count: f.count }))
+      .sort((a: any, b: any) => b.count - a.count)
+
+    // Also get some actual species names
+    const speciesRes = await fetch(
+      `https://records-ws.nbnatlas.org/occurrences/search?lat=${lat}&lon=${lng}&radius=2&pageSize=0&facets=taxon_name&facet=true&flimit=20`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+    )
+    let topSpecies: Array<{ name: string; count: number }> = []
+    if (speciesRes.ok) {
+      const sd = await speciesRes.json()
+      topSpecies = (sd.facetResults?.[0]?.fieldResult || [])
+        .map((f: any) => ({ name: f.label, count: f.count }))
+        .slice(0, 15)
+    }
+
+    return {
+      totalRecords: data.totalRecords || 0,
+      groups,
+      topSpecies,
+    }
+  } catch { return null }
+}
+
+// ─── Helpers ───
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}

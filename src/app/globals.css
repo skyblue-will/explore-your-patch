@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-patch-cream text-gray-800 antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-patch-lichen/20 p-6 transition-shadow hover:shadow-md;
+  }
+  .section-title {
+    @apply text-2xl font-serif text-patch-deep-green mb-1;
+  }
+  .section-subtitle {
+    @apply text-sm text-patch-lichen mb-6;
+  }
+  .stat-number {
+    @apply text-3xl font-serif font-bold text-patch-forest;
+  }
+  .storytelling {
+    @apply text-gray-600 leading-relaxed;
+  }
+}
