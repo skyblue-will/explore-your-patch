@@ -1,50 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-patch-cream text-gray-800 antialiased;
+    @apply bg-patch-bg text-gray-800 antialiased font-sans;
   }
-  h1, h2, h3, h4 {
+  h1, h2, h3 {
     @apply font-serif;
   }
 }
 
 @layer components {
-  .card {
-    @apply bg-white rounded-2xl shadow-sm border border-patch-lichen/20 p-6 transition-shadow hover:shadow-md;
+  .section-divider {
+    @apply border-t border-patch-line pt-8 mt-10;
   }
-
-  .category-section {
-    @apply mb-14 rounded-3xl p-6 md:p-8;
+  .data-row {
+    @apply flex justify-between items-center py-2.5 border-b border-patch-line/60 last:border-0;
   }
-  .category-nature { @apply bg-nature-bg border border-nature-border/50; }
-  .category-ocean { @apply bg-ocean-bg border border-ocean-border/50; }
-  .category-safety { @apply bg-safety-bg border border-safety-border/50; }
-  .category-property { @apply bg-property-bg border border-property-border/50; }
-  .category-flood { @apply bg-flood-bg border border-flood-border/50; }
-
-  .category-card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 transition-shadow hover:shadow-md;
-  }
-
-  .category-title {
-    @apply text-2xl font-serif mb-1;
-  }
-  .category-title-nature { @apply text-nature-600; }
-  .category-title-ocean { @apply text-ocean-600; }
-  .category-title-safety { @apply text-safety-600; }
-  .category-title-property { @apply text-property-600; }
-  .category-title-flood { @apply text-flood-600; }
-
-  .section-subtitle {
-    @apply text-sm text-gray-500 mb-6;
-  }
-  .stat-number {
-    @apply text-3xl font-serif font-bold;
-  }
-  .storytelling {
-    @apply text-gray-600 leading-relaxed;
+  .section-source {
+    @apply text-xs text-patch-muted mt-1;
   }
 }
