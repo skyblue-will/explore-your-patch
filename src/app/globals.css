@@ -15,14 +15,58 @@
   .card {
     @apply bg-white rounded-2xl shadow-sm border border-patch-lichen/20 p-6 transition-shadow hover:shadow-md;
   }
-  .section-title {
-    @apply text-2xl font-serif text-patch-deep-green mb-1;
+
+  /* Category section wrappers */
+  .category-section {
+    @apply mb-14 rounded-3xl p-6 md:p-8;
   }
+
+  .category-nature {
+    @apply bg-nature-bg border border-nature-border/50;
+  }
+  .category-ocean {
+    @apply bg-ocean-bg border border-ocean-border/50;
+  }
+  .category-safety {
+    @apply bg-safety-bg border border-safety-border/50;
+  }
+  .category-property {
+    @apply bg-property-bg border border-property-border/50;
+  }
+  .category-flood {
+    @apply bg-flood-bg border border-flood-border/50;
+  }
+
+  /* Category cards (white cards inside coloured sections) */
+  .category-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 transition-shadow hover:shadow-md;
+  }
+
+  /* Category titles */
+  .category-title {
+    @apply text-2xl font-serif mb-1 flex items-center gap-3;
+  }
+  .category-title-nature { @apply text-nature-600; }
+  .category-title-ocean { @apply text-ocean-600; }
+  .category-title-safety { @apply text-safety-600; }
+  .category-title-property { @apply text-property-600; }
+  .category-title-flood { @apply text-flood-600; }
+
+  /* Category accent pill/label */
+  .category-label {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-4;
+  }
+  .category-label-nature { @apply bg-nature-100 text-nature-600; }
+  .category-label-ocean { @apply bg-ocean-100 text-ocean-600; }
+  .category-label-safety { @apply bg-safety-100 text-safety-600; }
+  .category-label-property { @apply bg-property-100 text-property-600; }
+  .category-label-flood { @apply bg-flood-100 text-flood-600; }
+
   .section-subtitle {
-    @apply text-sm text-patch-lichen mb-6;
+    @apply text-sm text-gray-500 mb-6;
   }
   .stat-number {
-    @apply text-3xl font-serif font-bold text-patch-forest;
+    @apply text-3xl font-serif font-bold;
   }
   .storytelling {
     @apply text-gray-600 leading-relaxed;
