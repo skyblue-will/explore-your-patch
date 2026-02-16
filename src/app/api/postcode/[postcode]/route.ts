@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies } from '../../../../lib/apis'
+import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees } from '../../../../lib/apis'
 
 export async function GET(
   _req: NextRequest,
@@ -13,13 +13,16 @@ export async function GET(
   }
 
   // Fetch all data sources in parallel
-  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species] = await Promise.all([
+  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees] = await Promise.all([
     getCrime(location.lat, location.lng),
     getFloodStations(location.lat, location.lng),
     getFloodWarnings(location.lat, location.lng),
     getHousePrices(location.postcode),
     getBathingWater(location.lat, location.lng),
     getSpecies(location.lat, location.lng),
+    getListedBuildings(location.lat, location.lng),
+    getAirQuality(location.lat, location.lng),
+    getAncientTrees(location.lat, location.lng),
   ])
 
   return NextResponse.json({
@@ -30,5 +33,8 @@ export async function GET(
     housePrices,
     bathingWater,
     species,
+    listedBuildings,
+    airQuality,
+    ancientTrees,
   })
 }

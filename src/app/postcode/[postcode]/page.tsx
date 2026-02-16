@@ -1,4 +1,4 @@
-import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies } from '../../../lib/apis'
+import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees } from '../../../lib/apis'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,13 +12,16 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   const location = await lookupPostcode(pc)
   if (!location) notFound()
 
-  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species] = await Promise.all([
+  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees] = await Promise.all([
     getCrime(location.lat, location.lng),
     getFloodStations(location.lat, location.lng),
     getFloodWarnings(location.lat, location.lng),
     getHousePrices(location.postcode),
     getBathingWater(location.lat, location.lng),
     getSpecies(location.lat, location.lng),
+    getListedBuildings(location.lat, location.lng),
+    getAirQuality(location.lat, location.lng),
+    getAncientTrees(location.lat, location.lng),
   ])
 
   return (
@@ -37,9 +40,9 @@ export default async function PostcodePage({ params }: { params: { postcode: str
       {/* Stats — colour-coded borders */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         <StatBox value={shortNum(species?.totalRecords)} label="Species records" borderColor="border-t-nature-main" textColor="text-nature-main" />
+        <StatBox value={listedBuildings ? String(listedBuildings.count) : '—'} label="Listed buildings" borderColor="border-t-heritage-main" textColor="text-heritage-main" />
         <StatBox value={housePrices?.averagePrice ? `£${shortNum(housePrices.averagePrice)}` : '—'} label="Avg. price" borderColor="border-t-property-main" textColor="text-property-main" />
         <StatBox value={shortNum(crime?.total)} label="Crimes" borderColor="border-t-safety-main" textColor="text-safety-main" />
-        <StatBox value={floodStations ? String(floodStations.count) : '—'} label="Flood stations" borderColor="border-t-flood-main" textColor="text-flood-main" />
       </div>
 
       {/* ── Wildlife ── green */}
@@ -73,6 +76,35 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </section>
       )}
 
+      {/* ── Ancient Trees ── oak green */}
+      {ancientTrees && ancientTrees.count > 0 && (
+        <section className="mb-10 border-l-[3px] border-trees-main pl-5 md:pl-6">
+          <SectionHead title="Ancient & Veteran Trees" color="text-trees-main" source="Woodland Trust ATI · within ~5km" />
+          <p className="text-gray-600 mb-5">
+            {ancientTrees.count} tree{ancientTrees.count !== 1 ? 's' : ''} recorded nearby
+          </p>
+          {Object.keys(ancientTrees.byCategory).length > 0 && (
+            <div className="flex gap-4 mb-5 text-sm">
+              {Object.entries(ancientTrees.byCategory).map(([cat, count]: [string, any]) => (
+                <span key={cat} className="text-gray-700">
+                  <span className="font-semibold">{count}</span> {cat.toLowerCase()}
+                </span>
+              ))}
+            </div>
+          )}
+          {ancientTrees.bySpecies.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5 text-sm">
+              {ancientTrees.bySpecies.map(([species, count]: [string, number]) => (
+                <div key={species} className="flex justify-between">
+                  <span className="text-gray-700">{species}</span>
+                  <span className="text-patch-muted tabular-nums ml-2">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ── Bathing Water ── ocean */}
       {bathingWater && bathingWater.sites.length > 0 && (
         <section className="mb-10 border-l-[3px] border-ocean-main pl-5 md:pl-6">
@@ -86,6 +118,27 @@ export default async function PostcodePage({ params }: { params: { postcode: str
                 <QualityDot classification={site.classification} />
                 <span className="text-patch-muted tabular-nums">{site.distance.toFixed(1)}km</span>
               </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* ── Air Quality ── teal */}
+      {airQuality && airQuality.stations.length > 0 && (
+        <section className="mb-10 border-l-[3px] border-air-main pl-5 md:pl-6">
+          <SectionHead title="Air Quality" color="text-air-main" source="DEFRA UK-AIR network" />
+          <p className="text-gray-600 mb-5">
+            Nearest monitoring stations from {formatNumber(airQuality.totalStations)} across the UK
+          </p>
+          {airQuality.stations.map((s: any, i: number) => (
+            <div key={i} className="data-row">
+              <div className="min-w-0 mr-3">
+                <span className="text-gray-700">{s.name}</span>
+                <div className="text-xs text-patch-muted mt-0.5">
+                  {s.pollutants.join(' · ')}
+                </div>
+              </div>
+              <span className="text-patch-muted tabular-nums shrink-0">{s.distance.toFixed(1)}km</span>
             </div>
           ))}
         </section>
@@ -131,6 +184,36 @@ export default async function PostcodePage({ params }: { params: { postcode: str
           <p className="text-gray-600">No sales data for this postcode.</p>
         )}
       </section>
+
+      {/* ── Heritage ── warm brown */}
+      {listedBuildings && listedBuildings.count > 0 && (
+        <section className="mb-10 border-l-[3px] border-heritage-main pl-5 md:pl-6">
+          <SectionHead title="Listed Buildings" color="text-heritage-main" source="Historic England · within 1km" />
+          <p className="text-gray-600 mb-5">
+            {listedBuildings.count}{listedBuildings.exceededLimit ? '+' : ''} listed building{listedBuildings.count !== 1 ? 's' : ''} nearby
+          </p>
+          {Object.keys(listedBuildings.byGrade).length > 0 && (
+            <div className="flex gap-4 mb-5 text-sm">
+              {['I', 'II*', 'II'].filter(g => listedBuildings.byGrade[g]).map(grade => (
+                <span key={grade} className="text-gray-700">
+                  <span className="font-semibold">{listedBuildings.byGrade[grade]}</span> Grade {grade}
+                </span>
+              ))}
+            </div>
+          )}
+          {listedBuildings.buildings.slice(0, 12).map((b: any, i: number) => (
+            <div key={i} className="data-row">
+              <div className="min-w-0 mr-3">
+                <span className="text-gray-700 text-sm">{b.name}</span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <GradeBadge grade={b.grade} />
+                {b.listDate && <span className="text-patch-muted text-xs tabular-nums">{b.listDate}</span>}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* ── Flooding ── blue */}
       <section className="mb-10 border-l-[3px] border-flood-main pl-5 md:pl-6">
@@ -183,6 +266,19 @@ function SectionHead({ title, color, source }: { title: string; color: string; s
       <h2 className={`text-xl font-serif ${color}`}>{title}</h2>
       <p className="section-source">{source}</p>
     </div>
+  )
+}
+
+function GradeBadge({ grade }: { grade: string }) {
+  const colors: Record<string, string> = {
+    'I': 'bg-amber-700 text-white',
+    'II*': 'bg-amber-600 text-white',
+    'II': 'bg-amber-100 text-amber-800',
+  }
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${colors[grade] || 'bg-gray-100 text-gray-600'}`}>
+      {grade}
+    </span>
   )
 }
 

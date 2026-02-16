@@ -22,6 +22,10 @@ module.exports = {
         safety: { main: '#4a4a52', light: '#f0f0f2' },
         property: { main: '#8a6914', light: '#f5f0e0' },
         flood: { main: '#2563a8', light: '#e8f0fa' },
+        heritage: { main: '#92400e', light: '#fdf4ee' },
+        air: { main: '#059669', light: '#e6f7f2' },
+        trees: { main: '#65a30d', light: '#f0f7e6' },
+        broadband: { main: '#6366f1', light: '#eef0ff' },
       },
       fontFamily: {
         serif: ['"Source Serif 4"', 'Georgia', 'serif'],

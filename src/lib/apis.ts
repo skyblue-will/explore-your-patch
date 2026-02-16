@@ -190,6 +190,113 @@ export async function getSpecies(lat: number, lng: number) {
   } catch { return null }
 }
 
+// ─── Historic England Listed Buildings ───
+export async function getListedBuildings(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=50`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.error) return null
+
+    const buildings = (data.features || []).map((f: any) => ({
+      name: f.attributes.Name,
+      grade: f.attributes.Grade,
+      listDate: f.attributes.ListDate ? new Date(f.attributes.ListDate).getFullYear() : null,
+      listEntry: f.attributes.ListEntry,
+    }))
+
+    const byGrade: Record<string, number> = {}
+    buildings.forEach((b: any) => { byGrade[b.grade] = (byGrade[b.grade] || 0) + 1 })
+
+    return { buildings, count: buildings.length, byGrade, exceededLimit: data.exceededTransferLimit || false }
+  } catch { return null }
+}
+
+// ─── Air Quality (London Air / ERG API + DEFRA UK-AIR) ───
+export async function getAirQuality(lat: number, lng: number) {
+  try {
+    // Use DEFRA UK-AIR SOS API - get all stations then find nearest
+    const res = await fetch(
+      'https://uk-air.defra.gov.uk/sos-ukair/api/v1/stations?expanded=true',
+      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+    )
+    if (!res.ok) return null
+    const stations: any[] = await res.json()
+
+    // Find nearest stations
+    const withDist = stations
+      .filter((s: any) => s.geometry?.coordinates?.[0] && s.geometry?.coordinates?.[1])
+      .map((s: any) => {
+        const sLat = s.geometry.coordinates[0] // DEFRA uses [lat, lng, alt]
+        const sLng = s.geometry.coordinates[1]
+        return {
+          name: s.properties?.label?.replace(/-.*$/, '').trim() || 'Unknown',
+          pollutant: s.properties?.label?.replace(/^[^-]+-/, '').trim() || '',
+          lat: sLat,
+          lng: sLng,
+          distance: haversine(lat, lng, sLat, sLng),
+          id: s.properties?.id,
+        }
+      })
+      .sort((a: any, b: any) => a.distance - b.distance)
+
+    // Group by station name, collect pollutants
+    const stationMap = new Map<string, any>()
+    for (const s of withDist) {
+      if (stationMap.size >= 5) break
+      const key = s.name
+      if (!stationMap.has(key)) {
+        stationMap.set(key, { name: s.name, distance: s.distance, pollutants: [] })
+      }
+      const st = stationMap.get(key)!
+      if (st.pollutants.length < 6) {
+        st.pollutants.push(s.pollutant)
+      }
+    }
+
+    return { stations: Array.from(stationMap.values()), totalStations: stations.length }
+  } catch { return null }
+}
+
+// ─── Ancient Trees (Woodland Trust ATI via ArcGIS) ───
+export async function getAncientTrees(lat: number, lng: number) {
+  try {
+    // Query with bounding box (envelope) since point+distance doesn't work well with this service
+    const delta = 0.05 // ~5km
+    const res = await fetch(
+      `https://services1.arcgis.com/k6HWkz7DMAcnnYfV/arcgis/rest/services/Ancient_Tree_Inventory/FeatureServer/0/query?geometry=${lng - delta},${lat - delta},${lng + delta},${lat + delta}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=Species,VETERAN&returnGeometry=true&outSR=4326&f=json&resultRecordCount=50`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.error) return null
+
+    const trees = (data.features || []).map((f: any) => ({
+      species: f.attributes.Species,
+      category: f.attributes.VETERAN,
+      distance: f.geometry ? haversine(lat, lng, f.geometry.y, f.geometry.x) : null,
+    }))
+      .sort((a: any, b: any) => (a.distance || 999) - (b.distance || 999))
+
+    const byCategory: Record<string, number> = {}
+    const bySpecies: Record<string, number> = {}
+    trees.forEach((t: any) => {
+      byCategory[t.category] = (byCategory[t.category] || 0) + 1
+      bySpecies[t.species] = (bySpecies[t.species] || 0) + 1
+    })
+
+    return {
+      trees: trees.slice(0, 20),
+      count: trees.length,
+      byCategory,
+      bySpecies: Object.entries(bySpecies).sort((a, b) => b[1] - a[1]).slice(0, 10),
+    }
+  } catch { return null }
+}
+
 // ─── Helpers ───
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371
