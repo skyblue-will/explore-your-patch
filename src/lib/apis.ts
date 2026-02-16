@@ -318,6 +318,78 @@ export async function getAncientTrees(lat: number, lng: number) {
   } catch { return null }
 }
 
+// ─── Natural England (SSSIs, NNRs, Country Parks, CRoW Open Access) ───
+export async function getNaturalEngland(lat: number, lng: number) {
+  const BASE = 'https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services'
+  const geoParams = `geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=3000&units=esriSRUnit_Meter&returnGeometry=true&outSR=4326&f=json`
+
+  const fetchArcGIS = async (service: string, outFields: string, maxResults = 20) => {
+    try {
+      const res = await fetch(
+        `${BASE}/${service}/FeatureServer/0/query?${geoParams}&outFields=${outFields}&resultRecordCount=${maxResults}`,
+        { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+      )
+      if (!res.ok) return null
+      const data = await res.json()
+      if (data.error) return null
+      return data.features || []
+    } catch { return null }
+  }
+
+  const [sssiFeatures, nnrFeatures, parkFeatures, crowCount] = await Promise.all([
+    fetchArcGIS('SSSI_England', 'NAME,MEASURE'),
+    fetchArcGIS('National_Nature_Reserves_England', 'NAME,MEASURE'),
+    fetchArcGIS('Country_Parks_England', 'NAME,STATUS,MEASURE'),
+    // CRoW: just count nearby
+    (async () => {
+      try {
+        const res = await fetch(
+          `${BASE}/CRoW_Act_2000_Access_Layer/FeatureServer/0/query?${geoParams}&returnCountOnly=true`,
+          { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+        )
+        if (!res.ok) return 0
+        const data = await res.json()
+        return data.count || 0
+      } catch { return 0 }
+    })(),
+  ])
+
+  const calcDist = (f: any) => {
+    if (!f.geometry) return 999
+    // Polygons: use centroid approximation from rings
+    if (f.geometry.rings) {
+      const ring = f.geometry.rings[0]
+      if (!ring || ring.length === 0) return 999
+      let cx = 0, cy = 0
+      for (const p of ring) { cx += p[0]; cy += p[1] }
+      cx /= ring.length; cy /= ring.length
+      return haversine(lat, lng, cy, cx)
+    }
+    return haversine(lat, lng, f.geometry.y, f.geometry.x)
+  }
+
+  const sssis = (sssiFeatures || []).map((f: any) => ({
+    name: f.attributes.NAME,
+    areaHa: f.attributes.MEASURE,
+    distance: calcDist(f),
+  })).sort((a: any, b: any) => a.distance - b.distance)
+
+  const nnrs = (nnrFeatures || []).map((f: any) => ({
+    name: f.attributes.NAME,
+    areaHa: f.attributes.MEASURE,
+    distance: calcDist(f),
+  })).sort((a: any, b: any) => a.distance - b.distance)
+
+  const greenSpaces = (parkFeatures || []).map((f: any) => ({
+    name: f.attributes.NAME,
+    status: f.attributes.STATUS,
+    areaHa: f.attributes.MEASURE,
+    distance: calcDist(f),
+  })).sort((a: any, b: any) => a.distance - b.distance)
+
+  return { sssis, nnrs, greenSpaces, openAccess: crowCount > 0 }
+}
+
 // ─── Helpers ───
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371

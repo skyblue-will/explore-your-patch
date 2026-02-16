@@ -25,6 +25,7 @@ module.exports = {
         heritage: { main: '#92400e', light: '#fdf4ee' },
         air: { main: '#059669', light: '#e6f7f2' },
         trees: { main: '#65a30d', light: '#f0f7e6' },
+        conservation: { main: '#047857', light: '#ecfdf5' },
         broadband: { main: '#6366f1', light: '#eef0ff' },
       },
       fontFamily: {

@@ -1,4 +1,4 @@
-import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees } from '../../../lib/apis'
+import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees, getNaturalEngland } from '../../../lib/apis'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,7 +12,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   const location = await lookupPostcode(pc)
   if (!location) notFound()
 
-  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees] = await Promise.all([
+  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland] = await Promise.all([
     getCrime(location.lat, location.lng),
     getFloodStations(location.lat, location.lng),
     getFloodWarnings(location.lat, location.lng),
@@ -22,6 +22,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
     getListedBuildings(location.lat, location.lng),
     getAirQuality(location.lat, location.lng),
     getAncientTrees(location.lat, location.lng),
+    getNaturalEngland(location.lat, location.lng),
   ])
 
   return (
@@ -98,6 +99,64 @@ export default async function PostcodePage({ params }: { params: { postcode: str
                 <div key={species} className="flex justify-between">
                   <span className="text-gray-700">{species}</span>
                   <span className="text-patch-muted tabular-nums ml-2">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Nature & Conservation ── emerald */}
+      {naturalEngland && (naturalEngland.sssis.length > 0 || naturalEngland.nnrs.length > 0 || naturalEngland.greenSpaces.length > 0 || naturalEngland.openAccess) && (
+        <section className="mb-10 border-l-[3px] border-conservation-main pl-5 md:pl-6">
+          <SectionHead title="Nature &amp; Conservation" color="text-conservation-main" source="Natural England · within 3km" />
+
+          {naturalEngland.openAccess && (
+            <div className="bg-conservation-light border border-emerald-200 px-4 py-3 mb-5 text-sm text-emerald-800">
+              <span className="font-semibold">🥾 Open access land nearby</span> — right to roam under the CRoW Act 2000
+            </div>
+          )}
+
+          {naturalEngland.sssis.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">Sites of Special Scientific Interest</h3>
+              {naturalEngland.sssis.map((s: any) => (
+                <div key={s.name} className="data-row">
+                  <div className="min-w-0 mr-3">
+                    <span className="text-gray-700">{s.name}</span>
+                    {s.areaHa && <span className="text-patch-muted text-xs ml-2">{s.areaHa.toFixed(1)} ha</span>}
+                  </div>
+                  <span className="text-patch-muted tabular-nums shrink-0">{s.distance.toFixed(1)}km</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {naturalEngland.nnrs.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">National Nature Reserves</h3>
+              {naturalEngland.nnrs.map((n: any) => (
+                <div key={n.name} className="data-row">
+                  <div className="min-w-0 mr-3">
+                    <span className="text-gray-700">{n.name}</span>
+                    {n.areaHa && <span className="text-patch-muted text-xs ml-2">{n.areaHa.toFixed(1)} ha</span>}
+                  </div>
+                  <span className="text-patch-muted tabular-nums shrink-0">{n.distance.toFixed(1)}km</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {naturalEngland.greenSpaces.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">Country Parks</h3>
+              {naturalEngland.greenSpaces.map((g: any) => (
+                <div key={g.name} className="data-row">
+                  <div className="min-w-0 mr-3">
+                    <span className="text-gray-700">{g.name}</span>
+                    {g.areaHa && <span className="text-patch-muted text-xs ml-2">{g.areaHa.toFixed(1)} ha</span>}
+                  </div>
+                  <span className="text-patch-muted tabular-nums shrink-0">{g.distance.toFixed(1)}km</span>
                 </div>
               ))}
             </div>
