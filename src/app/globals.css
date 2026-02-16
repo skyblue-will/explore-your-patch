@@ -6,7 +6,7 @@
 
 @layer base {
   body {
-    @apply bg-patch-bg text-gray-800 antialiased font-sans;
+    @apply bg-patch-bg text-gray-800 antialiased font-sans text-[15px];
   }
   h1, h2, h3 {
     @apply font-serif;
@@ -15,12 +15,12 @@
 
 @layer components {
   .section-divider {
-    @apply border-t border-patch-line pt-8 mt-10;
+    @apply border-t border-patch-line pt-6 mt-6;
   }
   .data-row {
-    @apply flex justify-between items-center py-2.5 border-b border-patch-line/60 last:border-0;
+    @apply flex justify-between items-center py-2 border-b border-patch-line/50 last:border-0 text-sm;
   }
   .section-source {
-    @apply text-xs text-patch-muted mt-1;
+    @apply text-[11px] text-patch-muted;
   }
 }
