@@ -190,7 +190,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         <section className="mb-10 border-l-[3px] border-heritage-main pl-5 md:pl-6">
           <SectionHead title="Listed Buildings" color="text-heritage-main" source="Historic England · within 1km" />
           <p className="text-gray-600 mb-5">
-            {listedBuildings.count}{listedBuildings.exceededLimit ? '+' : ''} listed building{listedBuildings.count !== 1 ? 's' : ''} nearby
+            {listedBuildings.count} listed building{listedBuildings.count !== 1 ? 's' : ''} within 1km
           </p>
           {Object.keys(listedBuildings.byGrade).length > 0 && (
             <div className="flex gap-4 mb-5 text-sm">
@@ -201,7 +201,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
               ))}
             </div>
           )}
-          {listedBuildings.buildings.slice(0, 12).map((b: any, i: number) => (
+          {listedBuildings.buildings.slice(0, 20).map((b: any, i: number) => (
             <div key={i} className="data-row">
               <div className="min-w-0 mr-3">
                 <span className="text-gray-700 text-sm">{b.name}</span>
