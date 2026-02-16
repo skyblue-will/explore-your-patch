@@ -34,17 +34,17 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </p>
       </header>
 
-      {/* Stats — generous spacing, no cramped borders */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        <Stat value={shortNum(species?.totalRecords)} label="Species records" color="text-nature-main" />
-        <Stat value={housePrices?.averagePrice ? `£${shortNum(housePrices.averagePrice)}` : '—'} label="Avg. price" color="text-property-main" />
-        <Stat value={shortNum(crime?.total)} label="Crimes" color="text-safety-main" />
-        <Stat value={floodStations ? String(floodStations.count) : '—'} label="Flood stations" color="text-flood-main" />
+      {/* Stats — colour-coded borders */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+        <StatBox value={shortNum(species?.totalRecords)} label="Species records" borderColor="border-t-nature-main" textColor="text-nature-main" />
+        <StatBox value={housePrices?.averagePrice ? `£${shortNum(housePrices.averagePrice)}` : '—'} label="Avg. price" borderColor="border-t-property-main" textColor="text-property-main" />
+        <StatBox value={shortNum(crime?.total)} label="Crimes" borderColor="border-t-safety-main" textColor="text-safety-main" />
+        <StatBox value={floodStations ? String(floodStations.count) : '—'} label="Flood stations" borderColor="border-t-flood-main" textColor="text-flood-main" />
       </div>
 
-      {/* ── Wildlife ── */}
+      {/* ── Wildlife ── green */}
       {species && species.totalRecords > 0 && (
-        <section className="section-divider">
+        <section className="mb-10 border-l-[3px] border-nature-main pl-5 md:pl-6">
           <SectionHead title="Wildlife" color="text-nature-main" source="NBN Atlas · within 2km" />
           <p className="text-gray-600 mb-5">
             {formatNumber(species.totalRecords)} records across {species.groups.length} groups
@@ -73,9 +73,9 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </section>
       )}
 
-      {/* ── Bathing Water ── */}
+      {/* ── Bathing Water ── ocean */}
       {bathingWater && bathingWater.sites.length > 0 && (
-        <section className="section-divider">
+        <section className="mb-10 border-l-[3px] border-ocean-main pl-5 md:pl-6">
           <SectionHead title="Bathing Water" color="text-ocean-main" source="Environment Agency" />
           {bathingWater.sites.map((site: any) => (
             <div key={site.name} className="data-row">
@@ -91,9 +91,9 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </section>
       )}
 
-      {/* ── Crime ── */}
+      {/* ── Crime ── slate */}
       {crime && (
-        <section className="section-divider">
+        <section className="mb-10 border-l-[3px] border-safety-main pl-5 md:pl-6">
           <SectionHead title="Crime" color="text-safety-main" source={`Police UK · ${crime.month}`} />
           <p className="text-gray-600 mb-5">
             {formatNumber(crime.total)} incidents nearby
@@ -109,8 +109,8 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </section>
       )}
 
-      {/* ── House Prices ── */}
-      <section className="section-divider">
+      {/* ── House Prices ── amber */}
+      <section className="mb-10 border-l-[3px] border-property-main pl-5 md:pl-6">
         <SectionHead title="House Prices" color="text-property-main" source="Land Registry" />
         {housePrices && housePrices.sales.length > 0 ? (
           <>
@@ -132,15 +132,15 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         )}
       </section>
 
-      {/* ── Flooding ── */}
-      <section className="section-divider">
+      {/* ── Flooding ── blue */}
+      <section className="mb-10 border-l-[3px] border-flood-main pl-5 md:pl-6">
         <SectionHead title="Flooding" color="text-flood-main" source="Environment Agency · within 10km" />
 
         {floodWarnings && floodWarnings.count > 0 && (
-          <div className="border-l-2 border-amber-400 pl-4 mb-5">
-            <p className="font-semibold text-amber-800 mb-1">Active warnings</p>
+          <div className="bg-amber-50 border border-amber-200 px-4 py-3 mb-5">
+            <p className="font-semibold text-amber-800 text-sm mb-1">Active warnings</p>
             {floodWarnings.warnings.map((w: any, i: number) => (
-              <p key={i} className="text-gray-700 text-sm mb-1">{w.description}</p>
+              <p key={i} className="text-gray-700 text-sm mb-1 last:mb-0">{w.description}</p>
             ))}
           </div>
         )}
@@ -168,10 +168,10 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   )
 }
 
-function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+function StatBox({ value, label, borderColor, textColor }: { value: string; label: string; borderColor: string; textColor: string }) {
   return (
-    <div className="bg-white border border-patch-line py-4 px-4">
-      <div className={`text-2xl font-serif font-semibold ${color} leading-none`}>{value}</div>
+    <div className={`bg-white border border-patch-line border-t-[3px] ${borderColor} py-4 px-4`}>
+      <div className={`text-2xl font-serif font-semibold ${textColor} leading-none`}>{value}</div>
       <div className="text-xs text-patch-muted mt-1.5">{label}</div>
     </div>
   )
