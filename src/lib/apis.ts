@@ -86,37 +86,44 @@ export async function getFloodWarnings(lat: number, lng: number) {
 
 // ─── Land Registry ───
 export async function getHousePrices(postcode: string) {
+  const formattedPostcode = postcode.toUpperCase().replace(/\s*/g, '').replace(/^(.+?)(\d\w\w)$/, '$1 $2')
   const sparql = `
     PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
     PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
-    SELECT ?amount ?date ?propertyType ?address
+    SELECT ?amount ?date ?propertyType ?paon ?street
     WHERE {
       ?tx lrppi:pricePaid ?amount ;
           lrppi:transactionDate ?date ;
           lrppi:propertyAddress ?addr .
-      ?addr lrcommon:postcode "${postcode.toUpperCase().replace(/(\S+)\s*(\d)/, '$1 $2')}" .
-      OPTIONAL { ?addr lrcommon:paon ?address }
+      ?addr lrcommon:postcode "${formattedPostcode}" .
+      OPTIONAL { ?addr lrcommon:paon ?paon }
+      OPTIONAL { ?addr lrcommon:street ?street }
       OPTIONAL { ?tx lrppi:propertyType ?propertyType }
     }
     ORDER BY DESC(?date)
     LIMIT 20
   `
   try {
-    const res = await fetch('https://landregistry.data.gov.uk/app/root/qonsole/query', {
+    const res = await fetch('https://landregistry.data.gov.uk/landregistry/query', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-      body: `output=json&query=${encodeURIComponent(sparql)}`,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/sparql-results+json' },
+      body: `query=${encodeURIComponent(sparql)}`,
       ...CACHE_24H,
       signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) return null
     const data = await res.json()
-    const results = (data.results?.bindings || []).map((b: any) => ({
-      amount: parseInt(b.amount?.value || '0'),
-      date: b.date?.value,
-      type: b.propertyType?.value?.split('/').pop() || 'unknown',
-      address: b.address?.value || '',
-    }))
+    const results = (data.results?.bindings || []).map((b: any) => {
+      const paon = b.paon?.value || ''
+      const street = b.street?.value || ''
+      const address = [paon, street].filter(Boolean).join(' ')
+      return {
+        amount: parseInt(b.amount?.value || '0'),
+        date: b.date?.value,
+        type: b.propertyType?.value?.split('/').pop() || 'unknown',
+        address,
+      }
+    })
 
     const amounts = results.map((r: any) => r.amount).filter((a: number) => a > 0)
     const avg = amounts.length ? Math.round(amounts.reduce((s: number, a: number) => s + a, 0) / amounts.length) : 0
