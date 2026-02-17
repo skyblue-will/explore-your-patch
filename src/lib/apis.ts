@@ -405,6 +405,74 @@ export async function getSewageOverflows(lat: number, lng: number) {
   } catch { return null }
 }
 
+// ─── Climate Outlook (Open-Meteo Climate API) ───
+export async function getClimateOutlook(lat: number, lng: number) {
+  try {
+    const model = 'EC_Earth3P_HR'
+    const vars = 'temperature_2m_max,temperature_2m_min,precipitation_sum'
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 5000)
+
+    // Fetch baseline (1991-2020) and future (2040-2060) in parallel
+    const [baseRes, futureRes] = await Promise.all([
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=1991-01-01&end_date=2020-12-31&models=${model}&daily=${vars}`, { signal: ctrl.signal, ...CACHE_24H }),
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=2040-01-01&end_date=2059-12-31&models=${model}&daily=${vars}`, { signal: ctrl.signal, ...CACHE_24H }),
+    ])
+    clearTimeout(timer)
+
+    if (!baseRes.ok || !futureRes.ok) return null
+    const [base, future] = await Promise.all([baseRes.json(), futureRes.json()])
+
+    const calcSeasonals = (d: any) => {
+      const times: string[] = d.daily.time
+      const tmax: (number | null)[] = d.daily.temperature_2m_max
+      const tmin: (number | null)[] = d.daily.temperature_2m_min
+      const precip: (number | null)[] = d.daily.precipitation_sum
+      const years = new Set(times.map((t: string) => t.slice(0, 4))).size
+
+      const isSummer = (dt: string) => { const m = dt.slice(5, 7); return m === '06' || m === '07' || m === '08' }
+      const isWinter = (dt: string) => { const m = dt.slice(5, 7); return m === '12' || m === '01' || m === '02' }
+
+      const summerMaxes = tmax.filter((t, i) => t != null && isSummer(times[i])) as number[]
+      const summerMins = tmin.filter((t, i) => t != null && isSummer(times[i])) as number[]
+      const winterPrecip = precip.filter((p, i) => p != null && isWinter(times[i])) as number[]
+      const summerPrecip = precip.filter((p, i) => p != null && isSummer(times[i])) as number[]
+      const hotDays = tmax.filter(t => t != null && t > 25).length
+
+      return {
+        summerMaxAvg: summerMaxes.length ? summerMaxes.reduce((a, b) => a + b, 0) / summerMaxes.length : null,
+        summerMinAvg: summerMins.length ? summerMins.reduce((a, b) => a + b, 0) / summerMins.length : null,
+        winterDailyPrecip: winterPrecip.length ? winterPrecip.reduce((a, b) => a + b, 0) / winterPrecip.length : null,
+        summerDailyPrecip: summerPrecip.length ? summerPrecip.reduce((a, b) => a + b, 0) / summerPrecip.length : null,
+        hotDaysPerYear: years ? hotDays / years : null,
+        years,
+      }
+    }
+
+    const b = calcSeasonals(base)
+    const f = calcSeasonals(future)
+
+    if (!b.summerMaxAvg || !f.summerMaxAvg) return null
+
+    return {
+      summerWarmingC: Math.round((f.summerMaxAvg - b.summerMaxAvg) * 10) / 10,
+      baselineSummerMax: Math.round(b.summerMaxAvg * 10) / 10,
+      futureSummerMax: Math.round(f.summerMaxAvg * 10) / 10,
+      winterRainChangePercent: b.winterDailyPrecip && f.winterDailyPrecip
+        ? Math.round(((f.winterDailyPrecip - b.winterDailyPrecip) / b.winterDailyPrecip) * 100)
+        : null,
+      summerRainChangePercent: b.summerDailyPrecip && f.summerDailyPrecip
+        ? Math.round(((f.summerDailyPrecip - b.summerDailyPrecip) / b.summerDailyPrecip) * 100)
+        : null,
+      hotDaysBaseline: b.hotDaysPerYear != null ? Math.round(b.hotDaysPerYear) : null,
+      hotDaysFuture: f.hotDaysPerYear != null ? Math.round(f.hotDaysPerYear) : null,
+      period: '2040–2059',
+      baseline: '1991–2020',
+      model: 'EC-Earth3P-HR',
+    }
+  } catch { return null }
+}
+
 // ─── Helpers ───
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371

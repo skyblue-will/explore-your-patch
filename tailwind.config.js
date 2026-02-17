@@ -28,6 +28,7 @@ module.exports = {
         conservation: { main: '#047857', light: '#ecfdf5' },
         sewage: { main: '#7c2d12', light: '#fef2e8' },
         broadband: { main: '#6366f1', light: '#eef0ff' },
+        climate: { main: '#c2410c', light: '#fff7ed' },
       },
       fontFamily: {
         serif: ['"Source Serif 4"', 'Georgia', 'serif'],

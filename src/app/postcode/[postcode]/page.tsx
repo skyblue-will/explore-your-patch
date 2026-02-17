@@ -1,4 +1,4 @@
-import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees, getNaturalEngland, getSewageOverflows } from '../../../lib/apis'
+import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees, getNaturalEngland, getSewageOverflows, getClimateOutlook } from '../../../lib/apis'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,7 +12,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   const location = await lookupPostcode(pc)
   if (!location) notFound()
 
-  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland, sewageOverflows] = await Promise.all([
+  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland, sewageOverflows, climateOutlook] = await Promise.all([
     getCrime(location.lat, location.lng),
     getFloodStations(location.lat, location.lng),
     getFloodWarnings(location.lat, location.lng),
@@ -24,6 +24,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
     getAncientTrees(location.lat, location.lng),
     getNaturalEngland(location.lat, location.lng),
     getSewageOverflows(location.lat, location.lng),
+    getClimateOutlook(location.lat, location.lng),
   ])
 
   return (
@@ -348,6 +349,48 @@ export default async function PostcodePage({ params }: { params: { postcode: str
               <span className="text-sewage-main font-semibold tabular-nums shrink-0 text-sm">{o.spills} × {Math.round(o.totalDurationHrs)}hrs</span>
             </div>
           ))}
+        </section>
+      )}
+
+      {/* ── Climate Outlook ── warm orange */}
+      {climateOutlook && (
+        <section className="mb-10 border-l-[3px] border-climate-main pl-5 md:pl-6">
+          <SectionHead title="Climate Outlook" color="text-climate-main" source={`${climateOutlook.model} climate model · projections for ${climateOutlook.period} vs ${climateOutlook.baseline} baseline`} />
+
+          <div className="bg-climate-light border border-orange-200 px-4 py-3 mb-5">
+            <p className="text-climate-main text-sm font-semibold mb-1">
+              🌡️ By 2050, summers here are projected to be {climateOutlook.summerWarmingC > 0 ? '+' : ''}{climateOutlook.summerWarmingC}°C {climateOutlook.summerWarmingC > 0 ? 'warmer' : 'cooler'}
+            </p>
+            <p className="text-sm text-patch-brown">
+              Average summer highs rise from <span className="font-semibold">{climateOutlook.baselineSummerMax}°C</span> to <span className="font-semibold">{climateOutlook.futureSummerMax}°C</span>.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {climateOutlook.hotDaysBaseline != null && climateOutlook.hotDaysFuture != null && (
+              <div className="bg-white border border-patch-line p-3">
+                <div className="text-lg font-serif font-semibold text-climate-main">{climateOutlook.hotDaysFuture}</div>
+                <div className="text-xs text-patch-muted">Hot days (&gt;25°C) per year by 2050</div>
+                <div className="text-xs text-patch-muted mt-1">Currently ~{climateOutlook.hotDaysBaseline}/year</div>
+              </div>
+            )}
+            {climateOutlook.winterRainChangePercent != null && (
+              <div className="bg-white border border-patch-line p-3">
+                <div className="text-lg font-serif font-semibold text-climate-main">{climateOutlook.winterRainChangePercent > 0 ? '+' : ''}{climateOutlook.winterRainChangePercent}%</div>
+                <div className="text-xs text-patch-muted">Winter rainfall change</div>
+              </div>
+            )}
+            {climateOutlook.summerRainChangePercent != null && (
+              <div className="bg-white border border-patch-line p-3">
+                <div className="text-lg font-serif font-semibold text-climate-main">{climateOutlook.summerRainChangePercent > 0 ? '+' : ''}{climateOutlook.summerRainChangePercent}%</div>
+                <div className="text-xs text-patch-muted">Summer rainfall change</div>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-patch-muted">
+            Projections from the EC-Earth3P-HR climate model via <a href="https://open-meteo.com/en/docs/climate-api" className="underline hover:text-climate-main" target="_blank" rel="noopener">Open-Meteo</a>. Based on SSP3-7.0 emissions scenario.
+          </p>
         </section>
       )}
 
