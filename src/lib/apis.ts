@@ -208,12 +208,13 @@ export async function getSpecies(lat: number, lng: number) {
 // ─── Historic England Listed Buildings ───
 export async function getListedBuildings(lat: number, lng: number) {
   try {
-    const res = await fetch(
-      `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=200`,
-      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
-    )
+    const url = `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=200`
+    console.log('Listed buildings URL:', url)
+    const res = await fetch(url, CACHE_24H)
+    console.log('Listed buildings status:', res.status)
     if (!res.ok) return null
     const data = await res.json()
+    console.log('Listed buildings features:', data.features?.length, 'error:', data.error)
     if (data.error) return null
 
     // Grade sort order: I first, then II*, then II
@@ -230,7 +231,7 @@ export async function getListedBuildings(lat: number, lng: number) {
 
     const exceeded = data.exceededTransferLimit || false
     return { buildings, count: buildings.length, byGrade, exceededLimit: exceeded }
-  } catch { return null }
+  } catch (e) { console.error('Listed buildings error:', e); return null }
 }
 
 // ─── Air Quality (London Air / ERG API + DEFRA UK-AIR) ───
