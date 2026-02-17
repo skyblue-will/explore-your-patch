@@ -12,19 +12,22 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   const location = await lookupPostcode(pc)
   if (!location) notFound()
 
+  // Fetch all data with individual error handling so one failure doesn't kill the page
+  const safe = <T,>(p: Promise<T>): Promise<T | null> => p.catch(() => null)
+
   const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland, sewageOverflows, climateOutlook] = await Promise.all([
-    getCrime(location.lat, location.lng),
-    getFloodStations(location.lat, location.lng),
-    getFloodWarnings(location.lat, location.lng),
-    getHousePrices(location.postcode),
-    getBathingWater(location.lat, location.lng),
-    getSpecies(location.lat, location.lng),
-    getListedBuildings(location.lat, location.lng),
-    getAirQuality(location.lat, location.lng),
-    getAncientTrees(location.lat, location.lng),
-    getNaturalEngland(location.lat, location.lng),
-    getSewageOverflows(location.lat, location.lng),
-    getClimateOutlook(location.lat, location.lng),
+    safe(getCrime(location.lat, location.lng)),
+    safe(getFloodStations(location.lat, location.lng)),
+    safe(getFloodWarnings(location.lat, location.lng)),
+    safe(getHousePrices(location.postcode)),
+    safe(getBathingWater(location.lat, location.lng)),
+    safe(getSpecies(location.lat, location.lng)),
+    safe(getListedBuildings(location.lat, location.lng)),
+    safe(getAirQuality(location.lat, location.lng)),
+    safe(getAncientTrees(location.lat, location.lng)),
+    safe(getNaturalEngland(location.lat, location.lng)),
+    safe(getSewageOverflows(location.lat, location.lng)),
+    safe(getClimateOutlook(location.lat, location.lng)),
   ])
 
   return (
