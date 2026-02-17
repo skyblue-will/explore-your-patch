@@ -208,18 +208,6 @@ export async function getSpecies(lat: number, lng: number) {
 // ─── Historic England Listed Buildings ───
 export async function getListedBuildings(lat: number, lng: number) {
   try {
-    // First get total count
-    const countRes = await fetch(
-      `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&returnCountOnly=true&f=json`,
-      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
-    )
-    let totalCount = 0
-    if (countRes.ok) {
-      const countData = await countRes.json()
-      totalCount = countData.count || 0
-    }
-
-    // Then get the actual buildings (up to 200)
     const res = await fetch(
       `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=200`,
       { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
@@ -240,7 +228,8 @@ export async function getListedBuildings(lat: number, lng: number) {
     const byGrade: Record<string, number> = {}
     buildings.forEach((b: any) => { byGrade[b.grade] = (byGrade[b.grade] || 0) + 1 })
 
-    return { buildings, count: totalCount || buildings.length, byGrade }
+    const exceeded = data.exceededTransferLimit || false
+    return { buildings, count: buildings.length, byGrade, exceededLimit: exceeded }
   } catch { return null }
 }
 
