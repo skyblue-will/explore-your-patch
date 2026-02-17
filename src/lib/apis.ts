@@ -54,15 +54,23 @@ export async function getFloodStations(lat: number, lng: number) {
     )
     if (!res.ok) return null
     const data = await res.json()
-    const stations = (data.items || []).slice(0, 10).map((s: any) => ({
+    const allStations = data.items || []
+    const stations = allStations.slice(0, 10).map((s: any) => ({
       label: s.label,
       river: s.riverName,
       town: s.town,
-      status: s.status,
+      catchment: s.catchmentName,
+      status: s.status?.includes('Active') ? 'active' : s.status?.includes('Closed') ? 'closed' : 'unknown',
       lat: s.lat,
       lng: s.long,
+      distance: haversine(lat, lng, s.lat, s.long),
     }))
-    return { count: data.items?.length || 0, stations }
+
+    // Get unique rivers and catchments
+    const rivers = [...new Set(allStations.map((s: any) => s.riverName).filter(Boolean))]
+    const catchments = [...new Set(allStations.map((s: any) => s.catchmentName).filter(Boolean))]
+
+    return { count: allStations.length, stations, rivers, catchments }
   } catch { return null }
 }
 

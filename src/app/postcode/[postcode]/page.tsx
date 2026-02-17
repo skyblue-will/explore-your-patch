@@ -276,22 +276,45 @@ export default async function PostcodePage({ params }: { params: { postcode: str
 
       {/* ── Flooding ── blue */}
       <section className="mb-10 border-l-[3px] border-flood-main pl-5 md:pl-6">
-        <SectionHead title="Flooding" color="text-flood-main" source="Environment Agency · within 10km" />
+        <SectionHead title="Flood Risk" color="text-flood-main" source="Environment Agency · within 10km" />
 
-        {floodWarnings && floodWarnings.count > 0 && (
+        {/* Active warnings — prominent */}
+        {floodWarnings && floodWarnings.count > 0 ? (
           <div className="bg-amber-50 border border-amber-200 px-4 py-3 mb-5">
-            <p className="font-semibold text-amber-800 text-sm mb-1">Active warnings</p>
+            <p className="font-semibold text-amber-800 text-sm mb-2">⚠ {floodWarnings.count} active flood warning{floodWarnings.count !== 1 ? 's' : ''} in this area</p>
             {floodWarnings.warnings.map((w: any, i: number) => (
-              <p key={i} className="text-gray-700 text-sm mb-1 last:mb-0">{w.description}</p>
+              <div key={i} className="mb-2 last:mb-0">
+                <p className="text-gray-700 text-sm">{w.description}</p>
+                {w.area && <p className="text-amber-700 text-xs">{w.area}</p>}
+              </div>
             ))}
+          </div>
+        ) : (
+          <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 mb-5">
+            <p className="text-emerald-800 text-sm">No active flood warnings for this area.</p>
           </div>
         )}
 
         {floodStations && (
           <>
-            <p className="text-gray-600 mb-5">
-              {floodStations.count} station{floodStations.count !== 1 ? 's' : ''} nearby
+            {/* Context — rivers and catchment */}
+            <p className="text-gray-600 mb-3">
+              This area sits within the <span className="font-medium">{floodStations.catchments?.[0] || 'local'}</span> catchment.
+              {floodStations.rivers?.length > 0 && (
+                <> The Environment Agency monitors {floodStations.rivers.length === 1
+                  ? <span className="font-medium">{floodStations.rivers[0]}</span>
+                  : <>{floodStations.rivers.slice(0, 3).map((r: string, i: number) => (
+                      <span key={r}>{i > 0 && (i === Math.min(floodStations.rivers.length, 3) - 1 ? ' and ' : ', ')}<span className="font-medium">{r}</span></span>
+                    ))}{floodStations.rivers.length > 3 && ` and ${floodStations.rivers.length - 3} other waterway${floodStations.rivers.length - 3 !== 1 ? 's' : ''}`}</>
+                } nearby.</>
+              )}
             </p>
+            <p className="text-gray-600 mb-5">
+              {floodStations.count} monitoring station{floodStations.count !== 1 ? 's' : ''} within 10km track river levels and rainfall.
+            </p>
+
+            {/* Station list — with distance and river */}
+            <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">Nearest stations</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
               {floodStations.stations.map((s: any, i: number) => (
                 <div key={i} className="data-row">
@@ -299,7 +322,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
                     <span className="text-gray-700">{s.label}</span>
                     {s.river && <span className="text-patch-muted text-xs ml-2">{s.river}</span>}
                   </div>
-                  {s.town && <span className="text-patch-muted shrink-0">{s.town}</span>}
+                  <span className="text-patch-muted text-xs shrink-0 tabular-nums">{s.distance?.toFixed(1)}km</span>
                 </div>
               ))}
             </div>
