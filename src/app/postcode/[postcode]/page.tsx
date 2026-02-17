@@ -1,4 +1,4 @@
-import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees, getNaturalEngland } from '../../../lib/apis'
+import { lookupPostcode, getCrime, getFloodStations, getFloodWarnings, getHousePrices, getBathingWater, getSpecies, getListedBuildings, getAirQuality, getAncientTrees, getNaturalEngland, getSewageOverflows } from '../../../lib/apis'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -12,7 +12,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
   const location = await lookupPostcode(pc)
   if (!location) notFound()
 
-  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland] = await Promise.all([
+  const [crime, floodStations, floodWarnings, housePrices, bathingWater, species, listedBuildings, airQuality, ancientTrees, naturalEngland, sewageOverflows] = await Promise.all([
     getCrime(location.lat, location.lng),
     getFloodStations(location.lat, location.lng),
     getFloodWarnings(location.lat, location.lng),
@@ -23,6 +23,7 @@ export default async function PostcodePage({ params }: { params: { postcode: str
     getAirQuality(location.lat, location.lng),
     getAncientTrees(location.lat, location.lng),
     getNaturalEngland(location.lat, location.lng),
+    getSewageOverflows(location.lat, location.lng),
   ])
 
   return (
@@ -308,6 +309,48 @@ export default async function PostcodePage({ params }: { params: { postcode: str
           </>
         )}
       </section>
+      {/* ── Sewage Overflows ── dark rust */}
+      {sewageOverflows && sewageOverflows.count > 0 && (
+        <section className="mb-10 border-l-[3px] border-sewage-main pl-5 md:pl-6">
+          <SectionHead title="Sewage Overflows" color="text-sewage-main" source={`Environment Agency EDM · ${sewageOverflows.year} · within 5km`} />
+
+          <div className="bg-sewage-light border border-orange-200 px-4 py-3 mb-5">
+            <p className="text-sewage-main text-sm font-semibold mb-1">
+              💩 {formatNumber(sewageOverflows.totalSpills)} sewage discharge{sewageOverflows.totalSpills !== 1 ? 's' : ''} recorded nearby
+            </p>
+            <p className="text-gray-700 text-sm">
+              Raw sewage was discharged {sewageOverflows.waterBodies.length > 0 && <>into <span className="font-medium">{sewageOverflows.waterBodies.slice(0, 3).join(', ')}</span>{sewageOverflows.waterBodies.length > 3 && ` and ${sewageOverflows.waterBodies.length - 3} other water bodies`} </>}
+              for a total of <span className="font-semibold">{formatNumber(Math.round(sewageOverflows.totalHours))} hours</span> in {sewageOverflows.year}.
+            </p>
+          </div>
+
+          {Object.keys(sewageOverflows.byCompany).length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">By water company</h3>
+              {Object.entries(sewageOverflows.byCompany)
+                .sort((a: any, b: any) => b[1].spills - a[1].spills)
+                .map(([company, data]: [string, any]) => (
+                <div key={company} className="data-row">
+                  <span className="text-gray-700">{company}</span>
+                  <span className="text-patch-muted text-sm tabular-nums">{data.spills} spills · {Math.round(data.hours)}hrs</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h3 className="text-xs font-semibold text-patch-muted uppercase tracking-wider mb-3">Worst discharge points</h3>
+          {sewageOverflows.overflows.slice(0, 10).map((o: any, i: number) => (
+            <div key={i} className="data-row">
+              <div className="min-w-0 mr-3">
+                <span className="text-gray-700 text-sm">{o.site}</span>
+                {o.receivingWater && <span className="text-patch-muted text-xs ml-2">→ {o.receivingWater}</span>}
+              </div>
+              <span className="text-sewage-main font-semibold tabular-nums shrink-0 text-sm">{o.spills} × {Math.round(o.totalDurationHrs)}hrs</span>
+            </div>
+          ))}
+        </section>
+      )}
+
     </article>
   )
 }

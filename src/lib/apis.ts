@@ -349,6 +349,62 @@ export async function getNaturalEngland(lat: number, lng: number) {
   return { sssis, nnrs, greenSpaces, openAccess: crowCount > 0 }
 }
 
+// ─── Sewage Overflows (EDM) ───
+export async function getSewageOverflows(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://services3.arcgis.com/Bb8lfThdhugyc4G3/arcgis/rest/services/Storm_Overflow_EDM_Annual_Returns_2024/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=5000&units=esriSRUnit_Meter&outFields=waterCompanyName,siteNameEA,recievingWaterName,wfdWaterbodyName,totalDurationAllSpillsHrs,countedSpills,Latitude,Longitude&returnGeometry=false&f=json&resultRecordCount=50`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(5000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.error) return null
+
+    const overflows = (data.features || [])
+      .map((f: any) => {
+        const a = f.attributes
+        return {
+          site: a.siteNameEA,
+          waterCompany: a.waterCompanyName,
+          receivingWater: a.recievingWaterName,
+          waterbody: a.wfdWaterbodyName,
+          totalDurationHrs: a.totalDurationAllSpillsHrs || 0,
+          spills: a.countedSpills || 0,
+          distance: (a.Latitude && a.Longitude) ? haversine(lat, lng, a.Latitude, a.Longitude) : null,
+        }
+      })
+      .filter((o: any) => o.spills > 0)
+      .sort((a: any, b: any) => b.spills - a.spills)
+
+    const totalSpills = overflows.reduce((s: number, o: any) => s + o.spills, 0)
+    const totalHours = overflows.reduce((s: number, o: any) => s + o.totalDurationHrs, 0)
+
+    // Unique water bodies affected
+    const waterBodies = Array.from(new Set(
+      overflows.map((o: any) => o.receivingWater).filter(Boolean)
+    )) as string[]
+
+    // By water company
+    const byCompany: Record<string, { spills: number; hours: number }> = {}
+    overflows.forEach((o: any) => {
+      const co = o.waterCompany || 'Unknown'
+      if (!byCompany[co]) byCompany[co] = { spills: 0, hours: 0 }
+      byCompany[co].spills += o.spills
+      byCompany[co].hours += o.totalDurationHrs
+    })
+
+    return {
+      overflows: overflows.slice(0, 20),
+      count: overflows.length,
+      totalSpills,
+      totalHours: Math.round(totalHours * 10) / 10,
+      waterBodies,
+      byCompany,
+      year: 2024,
+    }
+  } catch { return null }
+}
+
 // ─── Helpers ───
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371

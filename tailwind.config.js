@@ -26,6 +26,7 @@ module.exports = {
         air: { main: '#059669', light: '#e6f7f2' },
         trees: { main: '#65a30d', light: '#f0f7e6' },
         conservation: { main: '#047857', light: '#ecfdf5' },
+        sewage: { main: '#7c2d12', light: '#fef2e8' },
         broadband: { main: '#6366f1', light: '#eef0ff' },
       },
       fontFamily: {
