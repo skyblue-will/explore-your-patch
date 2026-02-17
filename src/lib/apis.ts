@@ -208,13 +208,12 @@ export async function getSpecies(lat: number, lng: number) {
 // ─── Historic England Listed Buildings ───
 export async function getListedBuildings(lat: number, lng: number) {
   try {
-    const url = `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=200`
-    console.log('Listed buildings URL:', url)
-    const res = await fetch(url, CACHE_24H)
-    console.log('Listed buildings status:', res.status)
+    const res = await fetch(
+      `https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer/0/query?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=1000&units=esriSRUnit_Meter&outFields=Name,Grade,ListDate,ListEntry&returnGeometry=false&f=json&resultRecordCount=200`,
+      { ...CACHE_24H, signal: AbortSignal.timeout(10000) }
+    )
     if (!res.ok) return null
     const data = await res.json()
-    console.log('Listed buildings features:', data.features?.length, 'error:', data.error)
     if (data.error) return null
 
     // Grade sort order: I first, then II*, then II
@@ -234,13 +233,14 @@ export async function getListedBuildings(lat: number, lng: number) {
   } catch (e) { console.error('Listed buildings error:', e); return null }
 }
 
-// ─── Air Quality (London Air / ERG API + DEFRA UK-AIR) ───
+// ─── Air Quality (DEFRA UK-AIR) ───
+// Note: This API is slow (~7-10s) as it returns all 2,449 stations.
+// We fetch without expanded=true to reduce payload size.
 export async function getAirQuality(lat: number, lng: number) {
   try {
-    // Use DEFRA UK-AIR SOS API - get all stations then find nearest
     const res = await fetch(
-      'https://uk-air.defra.gov.uk/sos-ukair/api/v1/stations?expanded=true',
-      { ...CACHE_24H, signal: AbortSignal.timeout(15000) }
+      'https://uk-air.defra.gov.uk/sos-ukair/api/v1/stations',
+      { ...CACHE_24H, signal: AbortSignal.timeout(8000) }
     )
     if (!res.ok) return null
     const stations: any[] = await res.json()
@@ -249,15 +249,12 @@ export async function getAirQuality(lat: number, lng: number) {
     const withDist = stations
       .filter((s: any) => s.geometry?.coordinates?.[0] && s.geometry?.coordinates?.[1])
       .map((s: any) => {
-        const sLat = s.geometry.coordinates[0] // DEFRA uses [lat, lng, alt]
+        const sLat = s.geometry.coordinates[0]
         const sLng = s.geometry.coordinates[1]
         return {
           name: s.properties?.label?.replace(/-.*$/, '').trim() || 'Unknown',
           pollutant: s.properties?.label?.replace(/^[^-]+-/, '').trim() || '',
-          lat: sLat,
-          lng: sLng,
           distance: haversine(lat, lng, sLat, sLng),
-          id: s.properties?.id,
         }
       })
       .sort((a: any, b: any) => a.distance - b.distance)
