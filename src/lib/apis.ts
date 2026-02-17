@@ -67,8 +67,8 @@ export async function getFloodStations(lat: number, lng: number) {
     }))
 
     // Get unique rivers and catchments
-    const rivers = [...new Set(allStations.map((s: any) => s.riverName).filter(Boolean))]
-    const catchments = [...new Set(allStations.map((s: any) => s.catchmentName).filter(Boolean))]
+    const rivers = Array.from(new Set(allStations.map((s: any) => s.riverName).filter(Boolean))) as string[]
+    const catchments = Array.from(new Set(allStations.map((s: any) => s.catchmentName).filter(Boolean))) as string[]
 
     return { count: allStations.length, stations, rivers, catchments }
   } catch { return null }
