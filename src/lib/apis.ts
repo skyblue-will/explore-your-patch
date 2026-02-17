@@ -234,47 +234,11 @@ export async function getListedBuildings(lat: number, lng: number) {
 }
 
 // ─── Air Quality (DEFRA UK-AIR) ───
-// Note: This API is slow (~7-10s) as it returns all 2,449 stations.
-// We fetch without expanded=true to reduce payload size.
-export async function getAirQuality(lat: number, lng: number) {
-  try {
-    const res = await fetch(
-      'https://uk-air.defra.gov.uk/sos-ukair/api/v1/stations',
-      { ...CACHE_24H, signal: AbortSignal.timeout(8000) }
-    )
-    if (!res.ok) return null
-    const stations: any[] = await res.json()
-
-    // Find nearest stations
-    const withDist = stations
-      .filter((s: any) => s.geometry?.coordinates?.[0] && s.geometry?.coordinates?.[1])
-      .map((s: any) => {
-        const sLat = s.geometry.coordinates[0]
-        const sLng = s.geometry.coordinates[1]
-        return {
-          name: s.properties?.label?.replace(/-.*$/, '').trim() || 'Unknown',
-          pollutant: s.properties?.label?.replace(/^[^-]+-/, '').trim() || '',
-          distance: haversine(lat, lng, sLat, sLng),
-        }
-      })
-      .sort((a: any, b: any) => a.distance - b.distance)
-
-    // Group by station name, collect pollutants
-    const stationMap = new Map<string, any>()
-    for (const s of withDist) {
-      if (stationMap.size >= 5) break
-      const key = s.name
-      if (!stationMap.has(key)) {
-        stationMap.set(key, { name: s.name, distance: s.distance, pollutants: [] })
-      }
-      const st = stationMap.get(key)!
-      if (st.pollutants.length < 6) {
-        st.pollutants.push(s.pollutant)
-      }
-    }
-
-    return { stations: Array.from(stationMap.values()), totalStations: stations.length }
-  } catch { return null }
+// Disabled: API returns all 2,449 stations (~7-10s) with no geo filter.
+// This exceeds Vercel's 10s function timeout and blocks the whole page.
+// TODO: Pre-process station list or find a faster endpoint.
+export async function getAirQuality(_lat: number, _lng: number) {
+  return null
 }
 
 // ─── Ancient Trees (Woodland Trust ATI via ArcGIS) ───
