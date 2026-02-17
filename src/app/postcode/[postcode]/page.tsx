@@ -182,27 +182,6 @@ export default async function PostcodePage({ params }: { params: { postcode: str
         </section>
       )}
 
-      {/* ── Air Quality ── teal */}
-      {airQuality && airQuality.stations.length > 0 && (
-        <section className="mb-10 border-l-[3px] border-air-main pl-5 md:pl-6">
-          <SectionHead title="Air Quality" color="text-air-main" source="DEFRA UK-AIR network" />
-          <p className="text-gray-600 mb-5">
-            Nearest monitoring stations from {formatNumber(airQuality.totalStations)} across the UK
-          </p>
-          {airQuality.stations.map((s: any, i: number) => (
-            <div key={i} className="data-row">
-              <div className="min-w-0 mr-3">
-                <span className="text-gray-700">{s.name}</span>
-                <div className="text-xs text-patch-muted mt-0.5">
-                  {s.pollutants.join(' · ')}
-                </div>
-              </div>
-              <span className="text-patch-muted tabular-nums shrink-0">{s.distance.toFixed(1)}km</span>
-            </div>
-          ))}
-        </section>
-      )}
-
       {/* ── Crime ── slate */}
       {crime && (
         <section className="mb-10 border-l-[3px] border-safety-main pl-5 md:pl-6">
