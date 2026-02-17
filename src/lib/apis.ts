@@ -410,15 +410,11 @@ export async function getClimateOutlook(lat: number, lng: number) {
   try {
     const model = 'EC_Earth3P_HR'
     const vars = 'temperature_2m_max,temperature_2m_min,precipitation_sum'
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 5000)
-
     // Fetch baseline (1991-2020) and future (2040-2060) in parallel
     const [baseRes, futureRes] = await Promise.all([
-      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=1991-01-01&end_date=2020-12-31&models=${model}&daily=${vars}`, { signal: ctrl.signal, ...CACHE_24H }),
-      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=2040-01-01&end_date=2059-12-31&models=${model}&daily=${vars}`, { signal: ctrl.signal, ...CACHE_24H }),
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=1991-01-01&end_date=2020-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(5000) }),
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=2040-01-01&end_date=2059-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(5000) }),
     ])
-    clearTimeout(timer)
 
     if (!baseRes.ok || !futureRes.ok) return null
     const [base, future] = await Promise.all([baseRes.json(), futureRes.json()])
