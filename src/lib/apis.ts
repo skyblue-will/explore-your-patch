@@ -412,8 +412,8 @@ export async function getClimateOutlook(lat: number, lng: number) {
     const vars = 'temperature_2m_max,temperature_2m_min,precipitation_sum'
     // Fetch baseline (1991-2020) and future (2040-2060) in parallel
     const [baseRes, futureRes] = await Promise.all([
-      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=1991-01-01&end_date=2020-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(3000) }),
-      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=2040-01-01&end_date=2059-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(3000) }),
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=1991-01-01&end_date=2020-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(5000) }),
+      fetch(`https://climate-api.open-meteo.com/v1/climate?latitude=${lat}&longitude=${lng}&start_date=2040-01-01&end_date=2059-12-31&models=${model}&daily=${vars}`, { ...CACHE_24H, signal: AbortSignal.timeout(5000) }),
     ])
 
     if (!baseRes.ok || !futureRes.ok) return null
